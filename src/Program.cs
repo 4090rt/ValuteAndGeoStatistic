@@ -1,4 +1,4 @@
-﻿using EthernetTest.DelegateException;
+﻿ using EthernetTest.DelegateException;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,6 +13,7 @@ using ValuteAndWeatherStatistic.ModelData;
 using ValuteAndWeatherStatistic.Parser;
 using ValuteAndWeatherStatistic.DataBase;
 using ValuteAndWeatherStatistic.IHttpCientFactoryDelegate;
+using ValuteAndWeatherStatistic.DataBase.InsertRequest;
 
 var services = new ServiceCollection();
 
@@ -28,7 +29,7 @@ services.AddSingleton<delegateException>();
 services.AddSingleton<delegateHttpException>();
 services.AddSingleton<TaskCancelExceptionDelegate>(sp => new TaskCancelExceptionDelegate(sp.GetRequiredService<ILoggerFactory>().CreateLogger("TaskCancelExceptionDelegate")));
 services.AddSingleton<JsonExceptionDelegate>(sp => new JsonExceptionDelegate(sp.GetRequiredService<ILoggerFactory>().CreateLogger("JsonExceptionDelegate")));
-services.AddSingleton<SQLiteexceptionDelegate>(sp => new SQLiteexceptionDelegate(sp.GetRequiredService<ILoggerFactory>().CreateLogger("SQLiteexceptionDelegate")));
+services.AddSingleton<SQLiteexceptionDelegate>(sp => new SQLiteexceptionDelegate(sp.GetRequiredService<ILoggerFactory>().CreateLogger<SQLiteexceptionDelegate>()));
 
 // Парсер
 services.AddSingleton<ParserClass>();
@@ -66,7 +67,7 @@ try
     {
         foreach (var item in geoLocationResult)
         {
-            logger.LogWarning($"City: {item.City}, Country: {item.CountryName}");
+            logger.LogWarning($"City: {item.Geo?.City}, Country: {item.Geo?.CountryName}, Timezone: {item.Timezone}");
         }
     }
     else
@@ -76,8 +77,8 @@ try
 
     var insertGeoLoc = serviceProvider.GetRequiredService<InsertRequestGeoLoc>();
     var saveresultloc = geoLocationResult != null
-        ? new[] { geoLocationResult }.ToAsyncEnumerable()
-        : AsyncEnumerable.Empty<List<GeoLocation>>();
+        ? geoLocationResult.Select(g => g.Geo).Where(g => g != null).Select(g => new List<Geo> { g }).ToAsyncEnumerable()
+        : AsyncEnumerable.Empty<List<Geo>>();
 
     var saveresults = await insertGeoLoc.RequestGeolLoc(saveresultloc, DateTime.Now, cts.Token);
     logger.LogWarning(saveresults ? "Геолокация сохранена в БД" : "Ошибка при сохранении геолокации в БД");
@@ -92,7 +93,7 @@ try
     {
         foreach (var item in cordinatsResult)
         {
-            logger.LogWarning($"Lat: {item.Latitude}, Lon: {item.Longitude}, City: {item.City}");
+            logger.LogWarning($"City: {item.Geo?.City}, Timezone: {item.Timezone}, Offset: {item.TimezoneOffset}");
         }
     }
     else
@@ -100,50 +101,11 @@ try
         logger.LogWarning("Coordinates: нет данных");
     }
 
-    // Сохранение координат в базу данных
+    // Сохранение координат (timezone данные) в базу данных
     var insertCordinats = serviceProvider.GetRequiredService<InsertRequestCordinats>();
-    var cordinatsDataList = cordinatsResult?.Select(g => new List<CordinatsData>
-    {
-        new CordinatsData
-        {
-            Geo = new Geo
-            {
-                Latitude = g.Latitude,
-                Longitude = g.Longitude,
-                City = g.City,
-                Country = g.CountryName,
-                State = g.StateProv,
-                Location = g.City + ", " + g.CountryName,
-                Locality = g.District
-            },
-            Timezone = null,
-            TimezoneOffset = 0,
-            TimezoneOffsetWithDst = 0,
-            Date = null,
-            DateTime = null,
-            DateTimeTxt = null,
-            DateTimeWti = null,
-            DateTimeYmd = null,
-            DateTimeUnix = 0,
-            Time24 = null,
-            Time12 = null,
-            Week = 0,
-            Month = 0,
-            Year = 0,
-            YearAbbr = null,
-            CurrentTzAbbreviation = null,
-            CurrentTzFullName = null,
-            StandardTzAbbreviation = null,
-            StandardTzFullName = null,
-            IsDst = false,
-            DstSavings = 0,
-            DstExists = false,
-            DstTzAbbreviation = null,
-            DstTzFullName = null,
-            DstStart = null,
-            DstEnd = null
-        }
-    }).ToAsyncEnumerable() ?? AsyncEnumerable.Empty<List<CordinatsData>>();
+    var cordinatsDataList = cordinatsResult != null
+        ? new[] { cordinatsResult }.ToAsyncEnumerable()
+        : AsyncEnumerable.Empty<List<GeoLocation>>();
 
     var saveResult = await insertCordinats.CordinatsRequest(cordinatsDataList, DateTime.Now, cts.Token);
     logger.LogWarning(saveResult ? "Координаты сохранены в БД" : "Ошибка при сохранении координат в БД");
@@ -200,6 +162,8 @@ try
         ? new[] { weatherResult }.ToAsyncEnumerable()
         : AsyncEnumerable.Empty<List<WeatherData>>();
 
+    var savedweatherbd = await savedweather.WeatherRequest(wathersaeresult, DateTime.Now, cts.Token);
+    logger.LogWarning(saved ? "Погода  сохранена в БД" : "Ошибка при сохранении погоды в БД");
 }
 catch (Exception ex)
 {
