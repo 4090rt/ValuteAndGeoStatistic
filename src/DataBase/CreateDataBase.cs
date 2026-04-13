@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ValuteAndWeatherStatistic.DataBase
@@ -15,10 +13,11 @@ namespace ValuteAndWeatherStatistic.DataBase
         private bool? _isCheckedCreate;
 
         public CreateDataBase(ILogger<CreateDataBase> logger, PoolSQLiteConnect poolSQLiteConnect)
-        { 
+        {
             _logger = logger;
             _poolSQLiteConnect = poolSQLiteConnect;
         }
+
         public async Task Proverka()
         {
             if (_isCheckedCreate == true) return;
@@ -35,6 +34,7 @@ namespace ValuteAndWeatherStatistic.DataBase
 
             _isCheckedCreate = true;
         }
+
         public async Task<bool> CreateDataBaseMethod1()
         {
             SQLiteConnection connection = null;
@@ -42,15 +42,10 @@ namespace ValuteAndWeatherStatistic.DataBase
             {
                 connection = _poolSQLiteConnect.ConnectionOpen();
 
-                string command = "CREATE TABLE IF NOT EXISTS Coordinates (" +
+                string command =
+                    "DROP TABLE IF EXISTS Coordinates; " +
+                    "CREATE TABLE Coordinates (" +
                         "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "GeoLocation TEXT, " +
-                        "GeoCountry TEXT, " +
-                        "GeoState TEXT, " +
-                        "GeoCity TEXT, " +
-                        "GeoLocality TEXT, " +
-                        "GeoLatitude TEXT, " +
-                        "GeoLongitude TEXT, " +
                         "Timezone TEXT, " +
                         "TimezoneOffset INTEGER, " +
                         "TimezoneOffsetWithDst INTEGER, " +
@@ -99,10 +94,8 @@ namespace ValuteAndWeatherStatistic.DataBase
             }
             finally
             {
-                if (connection != null)
-                {
-                    _poolSQLiteConnect.ConnectionClose(connection);
-                }
+                connection?.Close();
+                _poolSQLiteConnect.ConnectionClose(connection);
             }
         }
 
@@ -115,7 +108,7 @@ namespace ValuteAndWeatherStatistic.DataBase
 
                 string command = "CREATE TABLE IF NOT EXISTS WeatherCurrent (" +
                         "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                        "CoordinatesId INTEGER NOT NULL, " +
+                        "CoordinatesId INTEGER, " +
                         "Latitude REAL, " +
                         "Longitude REAL, " +
                         "GenerationTimeMs REAL, " +
@@ -154,10 +147,8 @@ namespace ValuteAndWeatherStatistic.DataBase
             }
             finally
             {
-                if (connection != null)
-                {
-                    _poolSQLiteConnect.ConnectionClose(connection);
-                }
+                connection?.Close();
+                _poolSQLiteConnect.ConnectionClose(connection);
             }
         }
 
@@ -169,7 +160,8 @@ namespace ValuteAndWeatherStatistic.DataBase
                 connection = _poolSQLiteConnect.ConnectionOpen();
 
                 string command =
-                    "CREATE TABLE IF NOT EXISTS CurrencyRates (" +
+                    "DROP TABLE IF EXISTS CurrencyRates; " +
+                    "CREATE TABLE CurrencyRates (" +
                         "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         "Result TEXT, " +
                         "TimeLastUpdateUtc TEXT, " +
@@ -198,10 +190,8 @@ namespace ValuteAndWeatherStatistic.DataBase
             }
             finally
             {
-                if (connection != null)
-                {
-                    _poolSQLiteConnect.ConnectionClose(connection);
-                }
+                connection?.Close();
+                _poolSQLiteConnect.ConnectionClose(connection);
             }
         }
 
@@ -213,7 +203,8 @@ namespace ValuteAndWeatherStatistic.DataBase
                 connection = _poolSQLiteConnect.ConnectionOpen();
 
                 string command =
-                    "CREATE TABLE IF NOT EXISTS GeoLocations (" +
+                    "DROP TABLE IF EXISTS GeoLocations; " +
+                    "CREATE TABLE GeoLocations (" +
                         "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         "ContinentCode TEXT, " +
                         "ContinentName TEXT, " +
@@ -251,10 +242,8 @@ namespace ValuteAndWeatherStatistic.DataBase
             }
             finally
             {
-                if (connection != null)
-                {
-                    _poolSQLiteConnect.ConnectionClose(connection);
-                }
+                connection?.Close();
+                _poolSQLiteConnect.ConnectionClose(connection);
             }
         }
     }
