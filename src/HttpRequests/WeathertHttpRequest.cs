@@ -150,8 +150,8 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                 string longitude = "";
                 foreach (var item in resultcordinats)
                 {
-                    latitude = item.Latitude;
-                    longitude = item.Longitude;
+                    latitude = item.Geo?.Latitude;
+                    longitude = item.Geo?.Longitude;
                 }
                 if (resultcordinats != null && latitude != null && longitude != null)
                 {

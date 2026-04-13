@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using ValuteAndWeatherStatistic.DelegateException;
 using ValuteAndWeatherStatistic.ModelData;
@@ -78,7 +77,6 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                         }
                         if (oldcached != null)
                         {
-
                             _logger.LogInformation("✅ Fallback: возвращаю старые данные из кэша");
                             return oldcached;
                         }
@@ -152,19 +150,17 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                 using HttpResponseMessage responce = await client.SendAsync(options, cancellation).ConfigureAwait(false);
                 timer.Stop();
                 _httpRequestLogger.LogWarning("GeoLocation запрос завершился за {Seconds:F2} сек", timer.Elapsed.TotalSeconds);
-                    if (responce.IsSuccessStatusCode)
-                    {
-                        var resultread = await responce.Content.ReadAsStreamAsync().ConfigureAwait(false);
-
-                        var resultparse = await _parserClass.ParserObject<GeoLocationResponse>(resultread).ConfigureAwait(false);
-
-                        return resultparse.Select(r => r.Geo).Where(g => g != null).ToList();
-                    }
-                    else
-                    {
-                        _httpRequestLogger.LogError("Возникла ошибка при выпонлении запроса. посткод:" + responce.StatusCode);
-                        return new List<GeoLocation>();
-                    }
+                if (responce.IsSuccessStatusCode)
+                {
+                    var resultread = await responce.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    var resultparse = await _parserClass.ParserObject<GeoLocation>(resultread).ConfigureAwait(false);
+                    return resultparse.Where(g => g != null).ToList();
+                }
+                else
+                {
+                    _httpRequestLogger.LogError("Возникла ошибка при выпонлении запроса. посткод:" + responce.StatusCode);
+                    return new List<GeoLocation>();
+                }
             }
             catch (TaskCanceledException ex)
             {

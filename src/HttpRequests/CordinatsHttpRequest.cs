@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using ValuteAndWeatherStatistic.DelegateException;
 using ValuteAndWeatherStatistic.ModelData;
@@ -62,7 +61,6 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                     return cached2;
                 }
 
-
                 var fallback = Policy<List<GeoLocation>>
                     .Handle<Exception>()
                     .OrResult(r => r == null)
@@ -96,7 +94,7 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                             return default;
                         }
                     },
-                    onFallbackAsync: async (outcome,ctx) =>
+                    onFallbackAsync: async (outcome, ctx) =>
                     {
                         _logger.LogError($"🆘 Fallback сработал: {outcome.Exception?.Message}");
                         await Task.CompletedTask;
@@ -136,6 +134,7 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                 _semaphoreSlim?.Release();
             }
         }
+
         public async Task<List<GeoLocation>> Request(CancellationToken cancellation = default)
         {
             try
@@ -144,7 +143,7 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                 string City = "";
                 foreach (var item in geo)
                 {
-                     City = item.City;
+                    City = item.Geo?.City;
                 }
 
                 var client = _httpClientFactory.CreateClient("ClientHttp");
@@ -159,17 +158,17 @@ namespace ValuteAndWeatherStatistic.HttpRequests
                 timer.Stop();
                 _httpRequestLogger.LogWarning("Сordinats запрос завершился за {Seconds:F2} сек", timer.Elapsed.TotalSeconds);
 
-                    if (recpon.IsSuccessStatusCode)
-                    {
-                        var readrecpon = await recpon.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                        var parsed = await _parserClass.ParserObject<GeoLocationResponse>(readrecpon).ConfigureAwait(false);
-                        return parsed.Select(c => c.Geo).Where(g => g != null).ToList();
-                    }
-                    else
-                    {
-                        _httpRequestLogger.LogError("Возникла ошибка при выпонении запроса. посткод:" + recpon.StatusCode);
-                        return new List<GeoLocation>();
-                    }
+                if (recpon.IsSuccessStatusCode)
+                {
+                    var readrecpon = await recpon.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                    var parsed = await _parserClass.ParserObject<GeoLocation>(readrecpon).ConfigureAwait(false);
+                    return parsed.Where(g => g != null).ToList();
+                }
+                else
+                {
+                    _httpRequestLogger.LogError("Возникла ошибка при выпонении запроса. посткод:" + recpon.StatusCode);
+                    return new List<GeoLocation>();
+                }
             }
             catch (TaskCanceledException ex)
             {
