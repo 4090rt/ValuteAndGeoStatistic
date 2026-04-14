@@ -8,6 +8,7 @@ namespace ValuteAndWeatherStatistic.ModelData.ModelDataSelectRequest
 {
     public class RequestGeoLocationSElect
     {
+        public string Id { get; set; }
         public  string ContinentName { get; set; }
         public string CountryCode2 { get; set; }
         public string CountryName { get; set; }

@@ -8,6 +8,7 @@ namespace ValuteAndWeatherStatistic.ModelData.ModelDataSelectRequest
 {
     public class RequestCourceSelect
     {
+        public string Id { get; set; }
         public string BaseCode { get; set; }
         public string ConversionRates { get; set; }
         public string DateUpdate { get; set; }
