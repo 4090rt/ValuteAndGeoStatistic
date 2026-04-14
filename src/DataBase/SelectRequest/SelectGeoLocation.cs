@@ -143,7 +143,7 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
 
                 using (transaction = connection.BeginTransaction())
                 {
-                    string command = "SELECT  ContinentName, CountryCode2, CountryName, CountryNameOfficial, " +
+                    string command = "SELECT  Id,ContinentName, CountryCode2, CountryName, CountryNameOfficial, " +
                         "StateProv, District, City,DateUpdate FROM GeoLocations";
 
                     using (var sqlcommand = new SQLiteCommand(command, connection, transaction))

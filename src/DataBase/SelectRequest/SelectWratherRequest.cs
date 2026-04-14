@@ -13,9 +13,9 @@ using ValuteAndWeatherStatistic.ModelData.ModelDataSelectRequest;
 
 namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
 {
-    public class SelectCourceRequest
+    public class SelectWratherRequest
     {
-        private readonly ILogger<SelectCourceRequest> _logger;
+        private readonly ILogger<SelectWratherRequest> _logger;
         private readonly PoolSQLiteConnect _poolSQLiteConnect;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private readonly SQLiteexceptionDelegate _sQLiteexceptionDelegate;
@@ -23,7 +23,7 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
         private readonly TaskCancelExceptionDelegate _taskCanceledException;
         private readonly IMemoryCache _memoryCache;
 
-        public SelectCourceRequest(ILogger<SelectCourceRequest> logger, PoolSQLiteConnect poolSQLiteConnect, SemaphoreSlim semaphore,
+        public SelectWratherRequest(ILogger<SelectWratherRequest> logger, PoolSQLiteConnect poolSQLiteConnect, SemaphoreSlim semaphore,
             SQLiteexceptionDelegate sQLiteexceptionDelegate, delegateException delegateException, TaskCancelExceptionDelegate taskCanceledException, IMemoryCache memoryCache)
         {
             _logger = logger;
@@ -35,41 +35,40 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
             _memoryCache = memoryCache;
         }
 
-        public async Task<List<RequestCourceSelect>> CacheRequest(CancellationToken cancellation = default)
+        public async Task<List<RequestWeatherSelect>> CacheRequest(CancellationToken cancellation = default)
         {
-            string cachekey = "cachekeySelectCource";
-            string stalekey = $"stale{cachekey}";
-            List<RequestCourceSelect> oldcache = null;
+            string cachekey = "key_cacheWeather";
+            string stalecache = $"stale{cachekey}";
+            List<RequestWeatherSelect> oldcache = null;
 
-            if (_memoryCache.TryGetValue(cachekey, out List<RequestCourceSelect> cached))
+            if (_memoryCache.TryGetValue(cachekey, out List<RequestWeatherSelect> cached))
             {
                 oldcache = cached;
                 return cached;
             }
-
             await _semaphore.WaitAsync(cancellation);
 
             try
             {
-                if (_memoryCache.TryGetValue(cachekey, out List<RequestCourceSelect> cached2))
+                if (_memoryCache.TryGetValue(cachekey, out List<RequestWeatherSelect> cached2))
                 {
                     return cached2;
                 }
 
-                var fallback = Policy<List<RequestCourceSelect>>
+                var fallback = Policy<List<RequestWeatherSelect>>
                     .Handle<Exception>()
                     .OrResult(r => r == null)
                     .FallbackAsync(
                     fallbackAction: async (outcome, context, ctx) =>
                     {
                         var exception = outcome.Exception;
-                        var IsEmpty = outcome.Result == null;
+                        var isEmpty = outcome.Result == null;
 
                         if (exception != null)
                         {
                             _logger.LogWarning($"⚠️ Fallback by exception: {exception.Message}");
                         }
-                        if (IsEmpty)
+                        if (isEmpty)
                         {
                             _logger.LogWarning($"⚠️ Fallback by empty result");
                         }
@@ -78,7 +77,7 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
                             _logger.LogInformation("✅ Fallback: возвращаю старые данные из кэша");
                             return oldcache;
                         }
-                        if (_memoryCache.TryGetValue(stalekey, out List<RequestCourceSelect> stalecached))
+                        if (_memoryCache.TryGetValue(stalecache, out List<RequestWeatherSelect> stalecached))
                         {
                             _logger.LogInformation($"✅ Returning stale copy for {stalecached}");
                             return stalecached;
@@ -110,7 +109,7 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
                         var staleoptions = new MemoryCacheEntryOptions()
                         .SetAbsoluteExpiration(TimeSpan.FromMinutes(15));
 
-                        _memoryCache.Set(stalekey, result, staleoptions);
+                        _memoryCache.Set(stalecache, result, staleoptions);
                         _logger.LogInformation("✅ Cached fresh data for {CacheCode}", cachekey);
                         return result;
                     }
@@ -124,71 +123,86 @@ namespace ValuteAndWeatherStatistic.DataBase.SelectRequest
             }
             catch (Exception ex)
             {
-                return await _delegateException.RunDelegate(_delegateException.Delegate<RequestCourceSelect>, ex);
+                return await _delegateException.RunDelegate(_delegateException.Delegate<RequestWeatherSelect>, ex);
             }
             finally
-            { 
+            {
                 _semaphore.Release();
             }
         }
 
-        public async Task<List<RequestCourceSelect>> Request(CancellationToken cancellation = default)
+        public async Task<List<RequestWeatherSelect>> Request(CancellationToken cancellation = default)
         {
             SQLiteConnection connection = null;
             SQLiteTransaction transaction = null;
-            var resultlist = new List<RequestCourceSelect>();
+            List<RequestWeatherSelect> listresult = null;
             try
             {
                 connection = _poolSQLiteConnect.ConnectionOpen();
 
                 await using (transaction = connection.BeginTransaction())
                 {
-                    string command = "SELECT Id,BaseCode, ConversionRates, DateUpdate FROM CurrencyRates";
+                    string command = "SELECT Id, Timezone, Temperature, ApparentTemperature, RelativeHumidity, Precipitation, WeatherCode,  WindSpeed, WindDirection, DateUpdate FROM WeatherCurrent";
 
-                    await using (var commandsql = new SQLiteCommand(command, connection, transaction))
+                    await using (var sqlcommand = new SQLiteCommand(command, connection, transaction))
                     {
-                        var result = await commandsql.ExecuteReaderAsync().ConfigureAwait(false);
+                        var result = await sqlcommand.ExecuteReaderAsync().ConfigureAwait(false);
 
                         if (result != null)
                         {
                             while (await result.ReadAsync())
                             {
-                                var BaseCode = result.GetString(0);
-                                var ConversionRates = result.GetString(1);
-                                var DateUpdate = result.GetString(2);
+                                string Id = result.GetString(0);
+                                string Timezone = result.GetString(1);
+                                string Temperature = result.GetString(2);
+                                string ApparentTemperature = result.GetString(3);
+                                string RelativeHumidity = result.GetString(4);
+                                string Precipitation = result.GetString(5);
+                                string WeatherCode = result.GetString(6);
+                                string WindSpeed = result.GetString(7);
+                                string WindDirection = result.GetString(8);
+                                string DateUpdate = result.GetString(9);
 
-                                var resultreturn = new RequestCourceSelect()
+                                var resultat = new RequestWeatherSelect
                                 {
-                                    BaseCode = BaseCode,
-                                    ConversionRates = ConversionRates,
-                                    DateUpdate = DateUpdate
+                                    Id = Id,
+                                    Timezone = Timezone,
+                                    Temperature = Temperature,
+                                    ApparentTemperature = ApparentTemperature,
+                                    RelativeHumidity = RelativeHumidity,
+                                    Precipitation = Precipitation,
+                                    WeatherCode = WeatherCode,
+                                    WindSpeed = WindSpeed,
+                                    WindDirection = WindDirection,
+                                    DateUpdate = DateUpdate,
                                 };
-                                resultlist.Add(resultreturn);
+
+                                listresult.Add(resultat);
                             }
-                            return resultlist;
+                            return listresult;
                         }
                         else
                         {
-                            _logger.LogError("Результат запроса валют не найден");
-                            return new List<RequestCourceSelect>();
+                            _logger.LogError("Результат запроса погоды не найден");
+                            return new List<RequestWeatherSelect>();
                         }
                     }
                 }
             }
             catch (TaskCanceledException ex)
             {
-                await (transaction.RollbackAsync() ?? Task.CompletedTask);
-                return await _taskCanceledException.RunDelegate(_taskCanceledException.ExceptionMethod<RequestCourceSelect>, ex);
+                await (transaction?.RollbackAsync() ?? Task.CompletedTask);
+                return await _taskCanceledException.RunDelegate(_taskCanceledException.ExceptionMethod<RequestWeatherSelect>, ex);
             }
             catch (SQLiteException ex)
             {
-                await (transaction.RollbackAsync() ?? Task.CompletedTask);
-                return await _sQLiteexceptionDelegate.RunDelegate(_sQLiteexceptionDelegate.DelegateMethod<RequestCourceSelect>, ex);
+                await (transaction?.RollbackAsync() ?? Task.CompletedTask);
+                return await _sQLiteexceptionDelegate.RunDelegate(_sQLiteexceptionDelegate.DelegateMethod<RequestWeatherSelect>, ex);
             }
             catch (Exception ex)
             {
-                await (transaction.RollbackAsync() ?? Task.CompletedTask);
-                return await _delegateException.RunDelegate(_delegateException.Delegate<RequestCourceSelect>, ex);
+                await (transaction?.RollbackAsync() ?? Task.CompletedTask);
+                return await _delegateException.RunDelegate(_delegateException.Delegate<RequestWeatherSelect>, ex);
             }
             finally
             {
