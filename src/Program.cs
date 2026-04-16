@@ -1,4 +1,4 @@
-﻿ using EthernetTest.DelegateException;
+﻿using EthernetTest.DelegateException;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,11 +9,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using ValuteAndWeatherStatistic.DelegateException;
 using ValuteAndWeatherStatistic.HttpRequests;
-using ValuteAndWeatherStatistic.ModelData;
 using ValuteAndWeatherStatistic.Parser;
 using ValuteAndWeatherStatistic.DataBase;
 using ValuteAndWeatherStatistic.IHttpCientFactoryDelegate;
 using ValuteAndWeatherStatistic.DataBase.InsertRequest;
+using ValuteAndWeatherStatistic.ModelData.RequestData;
+using ValuteAndWeatherStatistic.DataBase.IntervalTime;
 
 var services = new ServiceCollection();
 
@@ -47,6 +48,12 @@ services.AddSingleton<CreateDataBase>();
 services.AddSingleton<InsertReqeustWeather>();
 services.AddSingleton<InsertRequestCource>();
 services.AddSingleton<InsertRequestGeoLoc>();
+services.AddSingleton<IntervalDayCource>();
+services.AddSingleton<IntervalWeekCource>();
+services.AddSingleton<IntervalMounthCurce>();
+services.AddSingleton<IntervalDayGeo>();
+services.AddSingleton<ItervalWeekGeo>();
+services.AddSingleton<IntervalMounthGEO>();
 
 var serviceProvider = services.BuildServiceProvider();
 
